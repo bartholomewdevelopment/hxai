@@ -2,7 +2,7 @@
   "name": "historyai",
   "version": "0.1.0",
   "private": true,
-  "description": "AI Historical Library — source-grounded conversations with historical figures.",
+  "description": "AI Historical Library \u2014 source-grounded conversations with historical figures.",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -30,7 +30,11 @@
     "db:migrate": "npm run db:migrate --workspace @historyai/api",
     "predb:seed": "npm run build:shared",
     "db:seed": "npm run db:seed --workspace @historyai/api",
-    "db:studio": "npm run db:studio --workspace @historyai/api"
+    "db:studio": "npm run db:studio --workspace @historyai/api",
+    "corpus:verify": "npm run build:shared && npm run corpus:verify --workspace @historyai/api",
+    "corpus:ingest": "npm run build:shared && npm run corpus:ingest --workspace @historyai/api",
+    "embed": "npm run build:shared && npm run embed --workspace @historyai/api",
+    "eval": "npm run build:shared && npm run eval --workspace @historyai/api"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

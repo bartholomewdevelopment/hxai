@@ -12,7 +12,11 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "corpus:verify": "tsx src/corpus/verify.ts",
+    "corpus:ingest": "tsx src/corpus/ingest.ts",
+    "embed": "tsx src/corpus/embed.ts",
+    "eval": "tsx src/eval/run.ts"
   },
   "dependencies": {
     "@historyai/shared": "*",
