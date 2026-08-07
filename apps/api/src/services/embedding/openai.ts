@@ -25,6 +25,17 @@ export class OpenAIEmbeddingService implements EmbeddingService {
   private readonly apiKey: string;
   private readonly baseUrl: string;
 
+  /**
+   * Tokens actually billed, as reported by the API, accumulated across the
+   * run. Reported by the embed job so cost is measured rather than estimated
+   * from a characters-per-token rule of thumb.
+   */
+  private billedTokens = 0;
+
+  get tokensUsed(): number {
+    return this.billedTokens;
+  }
+
   /** Provider's documented ceiling; batches are chunked to stay under it. */
   private static readonly MAX_BATCH = 128;
 
@@ -77,6 +88,7 @@ export class OpenAIEmbeddingService implements EmbeddingService {
       }
 
       const payload = (await response.json()) as OpenAIEmbeddingResponse;
+      this.billedTokens += payload.usage?.total_tokens ?? 0;
 
       // The API is documented to preserve order, but the response carries an
       // explicit index — sorting by it means a future change cannot silently

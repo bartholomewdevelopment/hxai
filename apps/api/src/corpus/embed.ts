@@ -124,9 +124,25 @@ async function main(): Promise<void> {
       console.log(`${position}  OK      ${row.title.slice(0, 60)}  (${note})`);
     } catch (error) {
       failures += 1;
-      console.log(
-        `${position}  FAILED  ${row.title.slice(0, 60)}: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      const detail = error instanceof Error ? error.message : String(error);
+      console.log(`${position}  FAILED  ${row.title.slice(0, 60)}: ${detail.slice(0, 200)}`);
+
+      // A quota or auth failure will hit every remaining source identically.
+      // Stop rather than printing the same error 30 more times — and say what
+      // to do about it, since neither is fixable by retrying.
+      if (/insufficient_quota|credit_balance_exhausted|billing/i.test(detail)) {
+        console.log(
+          '\n  Stopping: the embedding provider reports no remaining credit.\n' +
+            '  The API key authenticated successfully — this is a billing balance, not a bad key.\n' +
+            '  Add credit to the account, then re-run `npm run embed`. Work already done is kept:\n' +
+            '  only chunks with a NULL vector are sent, so the run resumes where it stopped.',
+        );
+        break;
+      }
+      if (/invalid_api_key|Incorrect API key|401/i.test(detail)) {
+        console.log('\n  Stopping: the API key was rejected. Check OPENAI_API_KEY in .env.');
+        break;
+      }
     }
   }
 
@@ -135,8 +151,19 @@ async function main(): Promise<void> {
     .from(sourceChunk)
     .where(isNull(sourceChunk.embedding));
 
+  // Real billed tokens when the adapter reports them, rather than the
+  // characters-per-token estimate used for the pre-run scope.
+  const billed = (services.embedding as { tokensUsed?: number }).tokensUsed;
+
   console.log(`\n--- Embedding summary ---`);
   console.log(`  chunks embedded: ${embeddedChunks}`);
+  if (typeof billed === 'number' && billed > 0) {
+    console.log(`  tokens billed:   ${billed.toLocaleString()}`);
+    // text-embedding-3-small list price at time of writing.
+    if (services.embedding.model === 'text-embedding-3-small') {
+      console.log(`  approx. cost:    $${((billed / 1_000_000) * 0.02).toFixed(4)} (at $0.02/1M)`);
+    }
+  }
   console.log(`  failures:        ${failures}`);
   console.log(`  still unembedded:${remaining?.value ?? 0}`);
 

@@ -22,10 +22,20 @@ export async function withRetry<T>(
     } catch (error) {
       lastError = error;
 
+      // An exhausted quota arrives as 429, the same status as rate limiting,
+      // but it is permanent: no amount of backoff produces credits. Retrying
+      // it turns a run that should fail in seconds into one that grinds
+      // through five backoffs per batch across the whole corpus. Distinguish
+      // them by the provider's error code rather than by status alone.
+      const permanentQuotaFailure =
+        error instanceof EmbeddingHttpError &&
+        /insufficient_quota|credit_balance_exhausted|billing_hard_limit/i.test(error.message);
+
       const retryable =
-        error instanceof EmbeddingHttpError
+        !permanentQuotaFailure &&
+        (error instanceof EmbeddingHttpError
           ? error.status === 429 || error.status >= 500
-          : error instanceof TypeError; // fetch network failure
+          : error instanceof TypeError); // fetch network failure
 
       if (!retryable || attempt === attempts - 1) throw error;
 

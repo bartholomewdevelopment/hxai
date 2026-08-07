@@ -31,10 +31,10 @@
     "predb:seed": "npm run build:shared",
     "db:seed": "npm run db:seed --workspace @historyai/api",
     "db:studio": "npm run db:studio --workspace @historyai/api",
-    "corpus:verify": "npm run build:shared && npm run corpus:verify --workspace @historyai/api",
-    "corpus:ingest": "npm run build:shared && npm run corpus:ingest --workspace @historyai/api",
-    "embed": "npm run build:shared && npm run embed --workspace @historyai/api",
-    "eval": "npm run build:shared && npm run eval --workspace @historyai/api"
+    "corpus:verify": "npm run build:shared && npm run corpus:verify --workspace @historyai/api --",
+    "corpus:ingest": "npm run build:shared && npm run corpus:ingest --workspace @historyai/api --",
+    "embed": "npm run build:shared && npm run embed --workspace @historyai/api --",
+    "eval": "npm run build:shared && npm run eval --workspace @historyai/api --"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
