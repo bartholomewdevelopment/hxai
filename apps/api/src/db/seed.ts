@@ -4,7 +4,18 @@ import { historicalPerson } from './schema/index';
 import type { NewHistoricalPersonRow } from './schema/people';
 
 /**
- * Phase 1 seed: the five test figures, with no sources.
+ * Seed: the five test figures, with no sources (ingestion is Phase 2).
+ *
+ * **v1.0 ships Abraham Lincoln alone.** He is the only figure with
+ * `published: true`; the other four are seeded as drafts so their records
+ * exist, are reviewable, and can be published by flipping one flag once their
+ * corpora are catalogued. Every public read route already filters on
+ * `published`, so no other code changes when a figure goes live.
+ *
+ * Lincoln was chosen for v1.0 because the Library of Congress's Abraham
+ * Lincoln Papers are transcribed, unambiguously public domain, and carry real
+ * archival metadata — clean input for getting the ingestion, citation, and
+ * rights-handling paths right before the corpus variety of 29 more figures.
  *
  * `knowledgeCutoffDate` is the person's date of death — the temporal boundary
  * the persona cannot see past. Phase 3 applies it as a retrieval filter.
@@ -50,8 +61,8 @@ const people: NewHistoricalPersonRow[] = [
     longBiography:
       'Benjamin Franklin left a Boston apprenticeship for Philadelphia at seventeen and built a printing business that made him wealthy enough to retire at forty-two and devote himself to science and public life. His experiments established the electrical nature of lightning and gave the language terms still in use — battery, conductor, positive and negative charge. He founded a library, a fire company, a hospital, and a university. As envoy to France he secured the alliance that made American independence militarily possible, and he was the only person to sign the Declaration of Independence, the Treaty of Paris, and the Constitution. His Autobiography and Poor Richard’s Almanack remain widely read.',
     knowledgeCutoffDate: '1790-04-17',
-    published: true,
-    featured: true,
+    published: false,
+    featured: false,
   },
   {
     slug: 'frederick-douglass',
@@ -70,8 +81,8 @@ const people: NewHistoricalPersonRow[] = [
     longBiography:
       'Frederick Douglass was born into slavery on Maryland’s Eastern Shore and taught himself to read in defiance of the law. He escaped north in 1838 and within a few years was the most sought-after speaker on the abolitionist circuit, so eloquent that audiences doubted he had ever been enslaved — a doubt he answered with the 1845 Narrative, naming names and places at direct risk to his freedom. He founded and edited the North Star, advised Lincoln on emancipation and Black enlistment, and campaigned for women’s suffrage alongside abolition. His birth date was never recorded; February 1818 is his own best reckoning. He left three autobiographies and decades of speeches and journalism.',
     knowledgeCutoffDate: '1895-02-20',
-    published: true,
-    featured: true,
+    published: false,
+    featured: false,
   },
   {
     slug: 'theodore-roosevelt',
@@ -96,7 +107,7 @@ const people: NewHistoricalPersonRow[] = [
     longBiography:
       'Theodore Roosevelt was a sickly asthmatic child who built himself into a rancher, soldier, and police commissioner before becoming, at forty-two, the youngest president in American history. He broke industrial trusts, established the Food and Drug Administration, and used the Antiquities Act to protect national monuments, forests, and bird reserves on a scale no president had attempted. He mediated the end of the Russo-Japanese War, winning the Nobel Peace Prize, and oversaw construction of the Panama Canal. After leaving office he mounted a third-party run in 1912 and led a near-fatal expedition down an uncharted Amazon tributary. He wrote some thirty-five books on history, natural science, and exploration.',
     knowledgeCutoffDate: '1919-01-06',
-    published: true,
+    published: false,
     featured: false,
   },
   {
@@ -116,7 +127,7 @@ const people: NewHistoricalPersonRow[] = [
     longBiography:
       'Charles Darwin abandoned medicine at Edinburgh and divinity at Cambridge before sailing as naturalist aboard HMS Beagle in 1831, a five-year voyage whose collections and observations occupied him for the rest of his life. He worked out the mechanism of natural selection within a few years of returning, then spent two decades accumulating evidence and publishing on barnacles, coral reefs, and orchids — until Alfred Russel Wallace independently arrived at the same idea and forced his hand. On the Origin of Species appeared in 1859 and sold out immediately. He published fourteen further books, including The Descent of Man, and corresponded with thousands of naturalists, breeders, and gardeners; some fifteen thousand of his letters survive.',
     knowledgeCutoffDate: '1882-04-19',
-    published: true,
+    published: false,
     featured: false,
   },
 ];
@@ -146,11 +157,15 @@ async function main(): Promise<void> {
         updatedAt: sql`now()`,
       },
     })
-    .returning({ slug: historicalPerson.slug });
+    .returning({ slug: historicalPerson.slug, published: historicalPerson.published });
 
   console.log(`Seeded ${rows.length} historical people:`);
-  for (const row of rows) console.log(`  - ${row.slug}`);
-  console.log('\nNo sources seeded — source ingestion is Phase 2.');
+  for (const row of rows) {
+    console.log(`  - ${row.slug}${row.published ? '  (published)' : '  (draft)'}`);
+  }
+  console.log('\nv1.0 publishes Abraham Lincoln only. The rest are drafts —');
+  console.log('flip `published` in this file and re-seed to bring one live.');
+  console.log('No sources seeded — source ingestion is Phase 2.');
 }
 
 main()

@@ -12,9 +12,9 @@ export function HomePage() {
       <section className="hero">
         <h1>Have a conversation with history.</h1>
         <p>
-          Ask a question of Lincoln, Douglass, or Darwin — and read the answer alongside the
-          letters, speeches, and papers it was drawn from. Every response is grounded in catalogued
-          primary sources, and every claim is cited.
+          Ask Abraham Lincoln a question — and read the answer alongside the letters, speeches, and
+          papers it was drawn from. Every response is grounded in catalogued primary sources, and
+          every claim is cited.
         </p>
         <Link className="button" to="/people">
           Browse the library
@@ -47,9 +47,9 @@ export function HomePage() {
 
       <section className="section">
         <p className="eyebrow">Featured</p>
-        <h2 style={{ fontSize: '1.6rem', marginBottom: '20px' }}>Recently added to the library</h2>
+        <h2 style={{ fontSize: '1.6rem', marginBottom: '20px' }}>In the library</h2>
 
-        {loading && <LoadingGrid count={3} />}
+        {loading && <LoadingGrid count={1} />}
         {error && <ErrorState error={error} />}
         {data && (
           <ul className="people-grid">

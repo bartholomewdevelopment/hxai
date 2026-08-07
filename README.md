@@ -6,6 +6,18 @@
 
 ---
 
+## Scope: v1.0 is one person
+
+**v1.0 ships Abraham Lincoln alone.** The goal is to get one figure genuinely right — ingestion, retrieval quality, citation accuracy, persona voice — before adding the remaining 29.
+
+This is a scope decision, not an architectural one. The schema, routes, and frontend are all multi-person; nothing is hardcoded to a single figure. All five seeded people exist as rows, but only Lincoln has `published = true`. The other four are drafts: invisible to every public route, ready to go live by flipping one flag in `seed.ts` and re-seeding.
+
+Lincoln was chosen because the [Library of Congress's Abraham Lincoln Papers](https://www.loc.gov/collections/abraham-lincoln-papers/) are transcribed, unambiguously public domain, and carry real archival metadata — clean input for getting the ingestion, citation, and rights-handling paths right before facing the corpus variety of 29 more figures.
+
+**What "perfecting" means concretely:** a held-out evaluation set of questions with known-correct source answers, measuring whether retrieval finds the right passage, whether quotations are verbatim, whether citations point at the right document, and whether the knowledge cutoff holds. That set becomes the regression suite protecting figures 2 through 30.
+
+---
+
 ## The invariant
 
 Everything in this codebase is arranged around one rule:
@@ -59,7 +71,7 @@ hxai/
 │   │       │   ├── schema/      Drizzle table definitions (the data model)
 │   │       │   ├── client.ts    Pool + drizzle instance
 │   │       │   ├── migrate.ts   Enables pgvector, then applies migrations
-│   │       │   └── seed.ts      The 5 test figures
+│   │       │   └── seed.ts      Seed figures (Lincoln published, rest drafts)
 │   │       ├── lib/             errors, logger, auth, audit, asyncHandler
 │   │       ├── middleware/      auth, validate, rateLimit, error, requestContext
 │   │       ├── routes/          health, auth, people, sources, conversations, admin
@@ -110,7 +122,7 @@ Nothing else changes — the schema, migrations, and queries are identical eithe
 
 ```bash
 npm run db:migrate        # enables the vector extension, then applies migrations
-npm run db:seed           # inserts the 5 test figures
+npm run db:seed           # seeds the figures (Lincoln published)
 npm run dev               # API on :4000, web on :5173
 ```
 
@@ -239,13 +251,17 @@ Everything Phase 2 needs is in place:
 - `GET /api/people/:id/sources` and `GET /api/sources/:id` already live and rendering on the person page — sources appear the moment they exist.
 - Counters (`source_count`, `audio_source_count`, `video_source_count`) ready for the ingestion pipeline to maintain.
 
+Phase 2's work is scoped to Lincoln: catalogue his corpus properly — full-text transcriptions, real archive metadata, verified rights status, accurate dating on every document — rather than a thin slice across five figures. Depth here is what the evaluation set measures against.
+
 **Three decisions are needed before Phase 2 starts.** See below.
 
 ---
 
 ## Decisions needed before Phase 2
 
-1. **Embedding provider** — the blocking one. `EMBEDDING_DIMENSIONS` is baked into the pgvector column at migration time; changing it later means an `ALTER TABLE` **and a full re-embed of every chunk**. Currently 1536, which fits OpenAI `text-embedding-3-small` and Voyage `voyage-3-lite`. Cohere `embed-english-v3.0` is 1024; Voyage `voyage-3` is 1024. Decide before the first chunk is embedded, not after. (Note that Anthropic does not offer an embedding model, so this is a second vendor regardless of the LLM choice.)
+1. **Embedding provider.** `EMBEDDING_DIMENSIONS` is baked into the pgvector column at migration time; changing it later means an `ALTER TABLE` **and a full re-embed of every chunk**. Currently 1536, which fits OpenAI `text-embedding-3-small` and Voyage `voyage-3-lite`. Cohere `embed-english-v3.0` is 1024; Voyage `voyage-3` is 1024. (Anthropic does not offer an embedding model, so this is a second vendor regardless of the LLM choice.)
+
+   **The single-person v1.0 scope makes this testable rather than a guess.** One corpus is cheap enough to embed more than once, so two providers can be run head-to-head against the evaluation set and chosen on measured retrieval quality. Worth doing before figure #2, since that is the last cheap moment.
 
 2. **Object storage provider** — S3 or Cloudflare R2. Both work through one S3-compatible adapter; R2 differs only in endpoint and zero egress fees, which matters if source scans and audio get served directly to browsers.
 
