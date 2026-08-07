@@ -78,6 +78,7 @@ async function upsertSourceRecord(
     published,
     metadata: {
       corpusSlug: document.slug,
+      perChunkDatesUnknown: document.perChunkDatesUnknown ?? false,
       notes: document.notes ?? null,
       verificationProblems: verificationProblems.length > 0 ? verificationProblems : undefined,
     },

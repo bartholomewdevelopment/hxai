@@ -188,9 +188,14 @@ export async function processSource(
           chunkIndex: chunk.index,
           text: chunk.text,
           tokenCount: chunk.tokenCount,
-          // The chunk inherits the source's date so temporal retrieval and
-          // knowledge-cutoff filtering work without a join.
-          dateContext: row.dateCreated,
+          // The chunk normally inherits the source's date so temporal
+          // retrieval works without a join. Sources that declare their
+          // per-chunk dates unknown (collected volumes) store NULL instead:
+          // an unknown date must not masquerade as a known one, because the
+          // date filter is what enforces the knowledge cutoff.
+          dateContext: (row.metadata as { perChunkDatesUnknown?: boolean }).perChunkDatesUnknown
+            ? null
+            : row.dateCreated,
           metadata: {
             startOffset: chunk.startOffset,
             endOffset: chunk.endOffset,

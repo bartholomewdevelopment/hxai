@@ -513,7 +513,10 @@ for (const volume of GUTENBERG_VOLUMES) {
       ? 'Stenographic report as published in the contemporary press; each side’s papers reported their own candidate more favourably. Contains Stephen A. Douglas’s words as well as Lincoln’s — speaker attribution matters when quoting.'
       : 'Nicolay and Hay edition (1905), public domain in the United States.',
     verificationStatus: 'verified',
-    notes: `Volume spans ${volume.range}; dateCreated is the end of that range. See the note on GUTENBERG_VOLUMES.`,
+    // Editorial front matter quotes speeches from well outside the volume's
+    // stated range, so no per-chunk date can be inferred from the volume.
+    perChunkDatesUnknown: true,
+    notes: `Volume spans ${volume.range}; dateCreated is the end of that range, and per-chunk dates are unknown. See the note on GUTENBERG_VOLUMES.`,
   });
 }
 

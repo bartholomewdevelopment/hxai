@@ -59,6 +59,20 @@ export interface CorpusDocument {
   /** Withhold from the public API even when verified (e.g. disputed authorship). */
   publishByDefault?: boolean;
 
+  /**
+   * Set when the document spans a date range and individual passages inside it
+   * cannot be dated from the document alone — a collected-works volume, say.
+   *
+   * Chunks from such a source are stored with a NULL `dateContext`, which
+   * excludes them from every date-bounded query. That costs recall, but the
+   * alternative is worse: stamping every chunk with the volume's range-end
+   * asserts a date we do not know, and a passage that is actually later than
+   * its stamp will leak past a knowledge cutoff. Measured on this corpus,
+   * Volume 1 (labelled 1832-1843) contains four chunks quoting the 1865 second
+   * inaugural — so the stamp was not merely imprecise, it was wrong.
+   */
+  perChunkDatesUnknown?: boolean;
+
   /** Free-form provenance notes carried into source.metadata. */
   notes?: string;
 }
