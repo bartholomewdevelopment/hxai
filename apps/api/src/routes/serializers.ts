@@ -106,3 +106,59 @@ export function toAuthenticatedUser(row: UserRow): AuthenticatedUser {
     createdAt: row.createdAt.toISOString(),
   };
 }
+
+/**
+ * Admin-facing source shapes.
+ *
+ * Distinct from the public serializers above because the admin dashboard needs
+ * exactly the operational fields the public API must never leak: processing
+ * state, error text, content hashes, and where the text was actually fetched
+ * from.
+ */
+export function toAdminSourceSummary(row: SourceRow) {
+  return {
+    id: row.id,
+    historicalPersonId: row.historicalPersonId,
+    title: row.title,
+    author: row.author,
+    documentType: row.documentType,
+    dateCreated: row.dateCreated,
+    approximateDate: row.approximateDate,
+    archiveName: row.archiveName,
+    sourceType: row.sourceType,
+    rightsStatus: row.rightsStatus,
+    verificationStatus: row.verificationStatus,
+    published: row.published,
+    processingStatus: row.processingStatus,
+    processingError: row.processingError,
+    chunkCount: row.chunkCount,
+    hasText: Boolean(row.fullText && row.fullText.length > 0),
+    textLength: row.fullText?.length ?? 0,
+    embeddedAt: row.embeddedAt?.toISOString() ?? null,
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toAdminSourceDetail(row: SourceRow) {
+  return {
+    ...toAdminSourceSummary(row),
+    description: row.description,
+    collectionName: row.collectionName,
+    canonicalUrl: row.canonicalUrl,
+    transcriptionUrl: row.transcriptionUrl,
+    originalDocumentUrl: row.originalDocumentUrl,
+    retrievedFrom: row.retrievedFrom,
+    retrievedAt: row.retrievedAt?.toISOString() ?? null,
+    fullText: row.fullText,
+    language: row.language,
+    translated: row.translated,
+    translator: row.translator,
+    historicalPeriod: row.historicalPeriod,
+    copyrightJurisdiction: row.copyrightJurisdiction,
+    rightsNotes: row.rightsNotes,
+    contentHash: row.contentHash,
+    processedAt: row.processedAt?.toISOString() ?? null,
+    metadata: row.metadata,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
