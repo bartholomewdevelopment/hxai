@@ -22,6 +22,8 @@ import {
   StubStorageService,
   StubTextToSpeechService,
 } from './stubs';
+import { OpenAIEmbeddingService } from './embedding/openai';
+import { VoyageEmbeddingService } from './embedding/voyage';
 
 /**
  * The single place providers are chosen.
@@ -59,12 +61,21 @@ function createLLMService(): LLMService {
 function createEmbeddingService(): EmbeddingService {
   switch (env.EMBEDDING_PROVIDER) {
     case 'openai':
+      return new OpenAIEmbeddingService({
+        apiKey: env.OPENAI_API_KEY ?? '',
+        model: env.EMBEDDING_MODEL,
+        dimensions: env.EMBEDDING_DIMENSIONS,
+      });
     case 'voyage':
+      return new VoyageEmbeddingService({
+        apiKey: env.VOYAGE_API_KEY ?? '',
+        model: env.EMBEDDING_MODEL === 'text-embedding-3-small' ? 'voyage-3' : env.EMBEDDING_MODEL,
+        dimensions: env.EMBEDDING_DIMENSIONS,
+      });
     case 'cohere':
-      // Phase 2: one adapter per provider, all returning EMBEDDING_DIMENSIONS vectors.
-      logger.warn(
-        `EMBEDDING_PROVIDER=${env.EMBEDDING_PROVIDER} is not wired yet; falling back to the stub.`,
-      );
+      // Not implemented — Cohere is a candidate mainly because it also
+      // supplies the Phase 3 reranker, which is not yet in play.
+      logger.warn('EMBEDDING_PROVIDER=cohere is not implemented; falling back to the stub.');
       return new StubEmbeddingService();
     case 'stub':
     default:
