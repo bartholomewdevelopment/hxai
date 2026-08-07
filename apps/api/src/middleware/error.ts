@@ -63,12 +63,19 @@ function toAppError(error: unknown): AppError {
     );
   }
 
-  // Postgres unique-violation surfaces as a conflict rather than a 500.
   if (typeof error === 'object' && error !== null && 'code' in error) {
-    if ((error as { code?: string }).code === '23505') {
-      return AppError.conflict('That record already exists');
+    const driverCode = (error as { code?: string }).code;
+
+    // Postgres unique-violation surfaces as a conflict rather than a 500.
+    if (driverCode === '23505') return AppError.conflict('That record already exists');
+
+    // Connection failures arrive from pg as an AggregateError whose own
+    // `message` is empty, which would otherwise produce a blank 500 body.
+    if (driverCode === 'ECONNREFUSED' || driverCode === 'ENOTFOUND') {
+      return AppError.internal('The database is unreachable', error);
     }
   }
 
-  return AppError.internal(error instanceof Error ? error.message : 'Unexpected error', error);
+  const message = error instanceof Error ? error.message.trim() : '';
+  return AppError.internal(message || 'Unexpected error', error);
 }
