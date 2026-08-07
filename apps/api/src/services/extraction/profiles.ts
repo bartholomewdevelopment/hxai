@@ -46,7 +46,12 @@ const avalon: ExtractionProfile = {
     sliceBetween(
       body,
       /<div\s+class="document-title"[^>]*>[\s\S]*?<\/div>/i,
-      /<div\s+class="(NavBottom|FooterContainer|Copyright)"/i,
+      // Avalon closes the document body before its navigation tables. The
+      // page-menu/site-menu classes are the real boundary on most pages;
+      // NavBottom and FooterContainer appear on others. Missing the boundary
+      // silently appends the whole century-index nav to the document text,
+      // which is what happened to the Gettysburg Address on the first pass.
+      /<(div|table)[^>]*class="(page-menu|site-menu|NavBottom|FooterContainer|Copyright)"/i,
     ),
   boilerplatePatterns: [
     /^Avalon Home$/i,
