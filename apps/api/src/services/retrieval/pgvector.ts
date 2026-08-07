@@ -38,6 +38,16 @@ const RRF_K = 60;
 /** Candidates drawn from each signal before fusion. */
 const CANDIDATE_DEPTH = 40;
 
+/** Most chunks any single source may contribute to one result set. */
+const MAX_CHUNKS_PER_SOURCE = 2;
+
+/**
+ * Multiplier applied to chunks carrying a known date. Modest by design: it
+ * should break near-ties between duplicate passages, not let a weak match from
+ * a dated document beat a strong one from an undated volume.
+ */
+const DATED_SOURCE_BOOST = 1.15;
+
 interface ScoredRow {
   chunkId: string;
   sourceId: string;
@@ -149,21 +159,68 @@ export class PgVectorRetrievalService implements RetrievalService {
     contribute(vectorHits);
     contribute(keywordHits);
 
-    return [...scores.values()]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit)
-      .map(({ row, score }) => ({
-        chunkId: row.chunkId,
-        sourceId: row.sourceId,
-        historicalPersonId: row.historicalPersonId,
-        text: row.text,
-        score,
-        sourceTitle: row.sourceTitle,
-        sourceAuthor: row.sourceAuthor,
-        sourceType: row.sourceType,
-        dateContext: row.dateContext,
-        pageNumber: row.pageNumber,
-      }));
+    // Cap chunks per source before truncating.
+    //
+    // This corpus contains the same passages twice: once in a precisely-dated
+    // standalone document and again inside a collected-works volume. The
+    // volumes hold 3,202 of 3,639 published chunks, so without a cap they take
+    // most of the result slots with near-duplicate text and push the
+    // better-catalogued standalone document off the end — which is exactly
+    // what happened on the first measured run ("with malice toward none"
+    // returned two volume chunks above the Second Inaugural itself).
+    //
+    // Capping also improves the answer regardless of duplication: five chunks
+    // from one source say less than five chunks from three.
+    // Prefer precisely-dated documents over undated collected volumes.
+    //
+    // Not a tie-break hack: it is a citation-quality rule. When the same
+    // passage exists in both a catalogued single document and a 500-page
+    // volume, citing "Second Inaugural Address, 4 March 1865" lets a reader
+    // check the claim, while citing "Volume 1" does not. Dated chunks are also
+    // the only ones usable for temporal reasoning at all.
+    //
+    // It additionally corrects a provenance problem the measured run exposed:
+    // volume front matter is the *editors'* commentary quoting Lincoln, not
+    // Lincoln's own words, and it was outranking the speech it quotes.
+    const ranked = [...scores.values()]
+      .map((entry) => ({
+        ...entry,
+        score: entry.row.dateContext ? entry.score * DATED_SOURCE_BOOST : entry.score,
+      }))
+      .sort((a, b) => b.score - a.score);
+    const perSource = new Map<string, number>();
+    const selected: typeof ranked = [];
+
+    for (const entry of ranked) {
+      const used = perSource.get(entry.row.sourceId) ?? 0;
+      if (used >= MAX_CHUNKS_PER_SOURCE) continue;
+      perSource.set(entry.row.sourceId, used + 1);
+      selected.push(entry);
+      if (selected.length >= limit) break;
+    }
+
+    // If the cap left us short (few distinct sources matched), backfill from
+    // the ranked list rather than returning fewer results than asked for.
+    if (selected.length < limit) {
+      const chosen = new Set(selected.map((entry) => entry.row.chunkId));
+      for (const entry of ranked) {
+        if (selected.length >= limit) break;
+        if (!chosen.has(entry.row.chunkId)) selected.push(entry);
+      }
+    }
+
+    return selected.slice(0, limit).map(({ row, score }) => ({
+      chunkId: row.chunkId,
+      sourceId: row.sourceId,
+      historicalPersonId: row.historicalPersonId,
+      text: row.text,
+      score,
+      sourceTitle: row.sourceTitle,
+      sourceAuthor: row.sourceAuthor,
+      sourceType: row.sourceType,
+      dateContext: row.dateContext,
+      pageNumber: row.pageNumber,
+    }));
   }
 
   /** Which signals fired, for diagnostics. Used by the sanity-check script. */
