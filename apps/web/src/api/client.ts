@@ -97,3 +97,105 @@ export const api = {
     return request(`/sources/${encodeURIComponent(id)}`);
   },
 };
+
+// ---------------------------------------------------------------- admin API
+//
+// Kept in the same client so the auth token and error envelope handling are
+// shared. Every call below requires a curator or admin token.
+
+export interface AdminSourceSummary {
+  id: string;
+  historicalPersonId: string;
+  title: string;
+  author: string | null;
+  documentType: string | null;
+  dateCreated: string | null;
+  approximateDate: string | null;
+  archiveName: string | null;
+  sourceType: string;
+  rightsStatus: string;
+  verificationStatus: string;
+  published: boolean;
+  processingStatus: string;
+  processingError: string | null;
+  chunkCount: number;
+  hasText: boolean;
+  textLength: number;
+  embeddedAt: string | null;
+  updatedAt: string;
+}
+
+export interface AdminSourceDetail extends AdminSourceSummary {
+  description: string | null;
+  collectionName: string | null;
+  canonicalUrl: string | null;
+  transcriptionUrl: string | null;
+  originalDocumentUrl: string | null;
+  retrievedFrom: string | null;
+  retrievedAt: string | null;
+  fullText: string | null;
+  rightsNotes: string | null;
+  contentHash: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface AdminChunk {
+  id: string;
+  chunkIndex: number;
+  text: string;
+  tokenCount: number | null;
+  embedded: boolean;
+}
+
+export interface AdminDashboard {
+  people: {
+    id: string;
+    slug: string;
+    displayName: string;
+    published: boolean;
+    sourceCount: number;
+  }[];
+  sourcesByProcessingStatus: { status: string; total: number }[];
+  sourcesByRightsStatus: { rights: string; total: number }[];
+  sourcesByType: { sourceType: string; total: number }[];
+  chunks: { chunks: number; embedded: number };
+}
+
+export const adminApi = {
+  dashboard: (): Promise<AdminDashboard> => request('/admin/dashboard'),
+
+  listSources: (personId?: string): Promise<Paginated<AdminSourceSummary>> =>
+    request(`/admin/sources${personId ? `?personId=${personId}` : ''}`),
+
+  getSource: (id: string): Promise<{ source: AdminSourceDetail; chunks: AdminChunk[] }> =>
+    request(`/admin/sources/${id}`),
+
+  createSource: (body: Record<string, unknown>): Promise<AdminSourceDetail> =>
+    request('/admin/sources', { method: 'POST', body: JSON.stringify(body) }),
+
+  updateSource: (id: string, body: Record<string, unknown>): Promise<AdminSourceDetail> =>
+    request(`/admin/sources/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+
+  processSource: (
+    id: string,
+    force = false,
+  ): Promise<{ chunksCreated: number; skipped: boolean; warnings: string[] }> =>
+    request(`/admin/sources/${id}/process`, { method: 'POST', body: JSON.stringify({ force }) }),
+
+  embedSource: (id: string, force = false): Promise<{ chunksEmbedded: number; skipped: boolean }> =>
+    request(`/admin/sources/${id}/embed`, { method: 'POST', body: JSON.stringify({ force }) }),
+
+  setPublished: (id: string, published: boolean): Promise<AdminSourceDetail> =>
+    request(`/admin/sources/${id}/publish`, {
+      method: 'POST',
+      body: JSON.stringify({ published }),
+    }),
+};
+
+export const authApi = {
+  login: (
+    email: string,
+    password: string,
+  ): Promise<{ user: { id: string; email: string; role: string }; token: string }> =>
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+};

@@ -87,7 +87,9 @@ export function PersonPage() {
               <ul className="source-list">
                 {sources.data.items.map((source) => (
                   <li key={source.id}>
-                    <div className="source-list__title">{source.title}</div>
+                    <Link className="source-list__title" to={`/sources/${source.id}`}>
+                      {source.title}
+                    </Link>
                     <div className="source-list__meta">
                       {source.author && <span>{source.author}</span>}
                       <span>{SOURCE_TYPE_LABELS[source.sourceType]}</span>

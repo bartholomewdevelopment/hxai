@@ -695,3 +695,331 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* --- source viewer ----------------------------------------------------- */
+
+.source-view {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.source-view__title {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  margin-bottom: 20px;
+}
+
+.source-view__meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 20px;
+  margin: 0 0 24px;
+  font-size: 0.9rem;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.source-view__meta dt {
+  color: var(--ink-faint);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+  padding-top: 2px;
+}
+
+.source-view__meta dd {
+  margin: 0;
+}
+
+.source-view__description {
+  margin-bottom: 24px;
+}
+
+.source-view__actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 24px 0 32px;
+}
+
+.passage {
+  margin: 32px 0;
+  padding: 20px 24px;
+  background: var(--paper-sunken);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.passage__quote {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+/* Historical text: preserve the transcription's own line structure. */
+.document-text {
+  white-space: pre-wrap;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  line-height: 1.75;
+  color: var(--ink);
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+}
+
+.document-text mark {
+  background: var(--accent-soft);
+  color: inherit;
+  padding: 2px 0;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+a.source-list__title {
+  display: block;
+  color: var(--ink);
+}
+
+a.source-list__title:hover {
+  color: var(--accent);
+}
+
+/* --- admin console ----------------------------------------------------- */
+
+.admin {
+  max-width: 1100px;
+}
+
+.admin__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.admin__title {
+  font-size: 1.9rem;
+  margin-bottom: 8px;
+}
+
+.admin__session {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+}
+
+.admin__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat {
+  padding: 18px 20px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+}
+
+.stat__value {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__suffix {
+  font-size: 0.95rem;
+  color: var(--ink-faint);
+}
+
+.stat__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  margin-top: 4px;
+}
+
+.pill {
+  display: inline-block;
+  font-size: 0.72rem;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: var(--paper-sunken);
+}
+
+.pill--ok {
+  background: #e6f2e6;
+  border-color: #b9d9b9;
+  color: #2c5a2c;
+}
+
+.pill--partial {
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
+  color: var(--warning-ink);
+}
+
+.pill--bad {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .pill--ok {
+    background: #1c2a1c;
+    border-color: #2f4a2f;
+    color: #9fce9f;
+  }
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-faint);
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.admin-table td {
+  padding: 12px 12px 12px 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-actions button {
+  padding: 5px 11px;
+  font-size: 0.8rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.admin-actions button:hover:not(:disabled) {
+  background: var(--paper-sunken);
+}
+
+.admin-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.admin-message {
+  padding: 10px 14px;
+  background: var(--paper-sunken);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  margin-bottom: 20px;
+}
+
+.admin-error,
+.admin-error-inline {
+  color: var(--accent);
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
+.admin-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.admin-form label,
+.admin-login label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+.admin-form input,
+.admin-login input {
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 0.9rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+}
+
+.admin-login {
+  max-width: 380px;
+  margin: 48px auto;
+}
+
+.admin-login h1 {
+  font-size: 1.6rem;
+  margin-bottom: 10px;
+}
+
+.admin-login form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.chunk-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.chunk-list li {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.chunk-list__meta {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  margin-bottom: 6px;
+}
+
+.chunk-list__text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+}

@@ -2,7 +2,11 @@
 
 **An AI historical library.** Source-grounded conversations with historical figures, with inline citations to primary sources.
 
-> **Status: Phase 1 (Foundation) complete.** The data model, API shell, auth, service abstractions, and frontend shells are built and running. There is no retrieval, no LLM call, no embedding, and no ingestion yet — those are Phases 2 and 3.
+> **Status: Phase 2 (Source library + ingestion) complete, except embeddings.**
+> The Lincoln corpus is curated, verified, ingested, and chunked — 31 documents,
+> 3,641 chunks. The admin console, source viewer, and both embedding adapters are
+> built. **Embedding vectors have not been generated**: that needs an API key.
+> Retrieval and generation are Phase 3.
 
 ---
 
@@ -30,31 +34,31 @@ Documents are catalogued first. A question retrieves passages from that catalogu
 
 Four guarantees follow from it, and the architecture is built to make them checkable rather than merely intended:
 
-| Guarantee | How the code enforces it |
-|---|---|
-| Never generate-then-find-sources | `LLMService.generate` takes `context: RetrievedChunk[]` as a **required** argument. There is no signature that generates without grounding. |
-| Citations come from stored records | `Citation` is built by `CitationService` from `source` rows. No route parses URLs or titles out of model output. |
-| Quotations are verbatim | Quoted text is sliced from `source_chunk.text`, which stores passages unmodified. `CitationService.verifyQuotations` checks this before a response is persisted. |
-| Figures are bounded in time | `historical_person.knowledge_cutoff_date` is applied as a **SQL predicate** on `source_chunk.date_context` at retrieval, not as a prompt instruction. |
+| Guarantee                          | How the code enforces it                                                                                                                                         |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Never generate-then-find-sources   | `LLMService.generate` takes `context: RetrievedChunk[]` as a **required** argument. There is no signature that generates without grounding.                      |
+| Citations come from stored records | `Citation` is built by `CitationService` from `source` rows. No route parses URLs or titles out of model output.                                                 |
+| Quotations are verbatim            | Quoted text is sliced from `source_chunk.text`, which stores passages unmodified. `CitationService.verifyQuotations` checks this before a response is persisted. |
+| Figures are bounded in time        | `historical_person.knowledge_cutoff_date` is applied as a **SQL predicate** on `source_chunk.date_context` at retrieval, not as a prompt instruction.            |
 
 ---
 
 ## Stack
 
-| Layer | Choice |
-|---|---|
-| Frontend | React 18 + TypeScript + Vite |
-| Backend | Node 20 + Express 4 + TypeScript |
+| Layer                         | Choice                                                                      |
+| ----------------------------- | --------------------------------------------------------------------------- |
+| Frontend                      | React 18 + TypeScript + Vite                                                |
+| Backend                       | Node 20 + Express 4 + TypeScript                                            |
 | Database **and** vector store | **PostgreSQL 17 + pgvector** — one store for relational data and embeddings |
-| ORM | **Drizzle ORM** + drizzle-kit migrations |
-| Validation | Zod (shared between env config and request validation) |
-| Auth | JWT (bearer) + bcrypt, with `user` / `curator` / `admin` roles |
-| Object storage | Interface only in Phase 1; S3-compatible (R2) adapter in Phase 2 |
-| AI providers | Interfaces + stubs only. Claude is the intended default LLM. |
+| ORM                           | **Drizzle ORM** + drizzle-kit migrations                                    |
+| Validation                    | Zod (shared between env config and request validation)                      |
+| Auth                          | JWT (bearer) + bcrypt, with `user` / `curator` / `admin` roles              |
+| Object storage                | Interface only in Phase 1; S3-compatible (R2) adapter in Phase 2            |
+| AI providers                  | Interfaces + stubs only. Claude is the intended default LLM.                |
 
 **Why Drizzle over Prisma:** this is fundamentally a vector-retrieval application. Drizzle has first-class pgvector support — a real `vector('embedding', { dimensions })` column type and `.using('hnsw', ...)` index builders — so embeddings are ordinary typed columns. Prisma models `vector` as `Unsupported`, which means its client cannot read or write the column at all and every ingestion and retrieval query would have to drop to raw SQL. That is the hot path of the whole product.
 
-**Why one database:** pgvector keeps relational data and embeddings in the same store, so a retrieval query can filter by person, by date, and by rights status *in the same statement* as the vector search. Temporal filtering and knowledge-cutoff enforcement are joins, not application-level post-filters — which is what makes them reliable. A dedicated vector database would mean two stores to keep consistent for no MVP benefit.
+**Why one database:** pgvector keeps relational data and embeddings in the same store, so a retrieval query can filter by person, by date, and by rights status _in the same statement_ as the vector search. Temporal filtering and knowledge-cutoff enforcement are joins, not application-level post-filters — which is what makes them reliable. A dedicated vector database would mean two stores to keep consistent for no MVP benefit.
 
 ---
 
@@ -130,15 +134,19 @@ Open **http://localhost:5173**.
 
 ### Scripts
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | API + web together |
-| `npm run build` | Builds shared → API (esbuild bundle) → web |
-| `npm run typecheck` | `tsc --noEmit` across all workspaces |
-| `npm run lint` / `npm run format` | ESLint (flat config) / Prettier |
-| `npm run db:up` / `db:down` | Start / stop Postgres |
-| `npm run db:generate` | Regenerate SQL migrations after a schema edit |
-| `npm run db:migrate` / `db:seed` / `db:studio` | Apply migrations / seed / open Drizzle Studio |
+| Command                                        | What it does                                                      |
+| ---------------------------------------------- | ----------------------------------------------------------------- |
+| `npm run dev`                                  | API + web together                                                |
+| `npm run build`                                | Builds shared → API (esbuild bundle) → web                        |
+| `npm run typecheck`                            | `tsc --noEmit` across all workspaces                              |
+| `npm run lint` / `npm run format`              | ESLint (flat config) / Prettier                                   |
+| `npm run db:up` / `db:down`                    | Start / stop Postgres                                             |
+| `npm run db:generate`                          | Regenerate SQL migrations after a schema edit                     |
+| `npm run db:migrate` / `db:seed` / `db:studio` | Apply migrations / seed / open Drizzle Studio                     |
+| `npm run corpus:verify`                        | Check every corpus URL resolves and extracts (network)            |
+| `npm run corpus:ingest`                        | Fetch, extract, clean, chunk, and store the corpus                |
+| `npm run embed`                                | Generate embeddings (needs an API key; `-- --dry-run` to cost it) |
+| `npm run eval`                                 | Run the 50-case evaluation set                                    |
 
 **Note on the API build:** the API is bundled by esbuild rather than emitted by `tsc`, and its relative imports are extensionless. drizzle-kit loads the schema through a CJS require and cannot resolve `./enums.js` back to `enums.ts`, so `.js`-suffixed imports break migration generation. `tsc` still runs as a typecheck gate before every bundle.
 
@@ -150,7 +158,7 @@ Ten tables. All of it is built to spec now, so later phases populate columns rat
 
 **`historical_person`** — slug, names, birth/death dates and places, nationality, occupations[], era, categories[], short/long biography, portrait and hero image URLs, `knowledge_cutoff_date`, `published`, `featured`, denormalised source counts, `persona_configuration` (JSONB), timestamps.
 
-**`source`** — the origin of every citation. Title, author, document type, `date_created` + `approximate_date` (machine-comparable date *and* the human hedge, "circa 1858"), historical period, description, archive and collection names, canonical / original-document / transcription / local-file URLs, full text, language, translation fields, `source_type` (`primary` | `contemporary` | `scholarly`), `rights_status` (`public_domain` | `licensed` | `permission_required` | `copyright` | `unknown`), copyright jurisdiction, rights notes, `verification_status`, metadata JSONB.
+**`source`** — the origin of every citation. Title, author, document type, `date_created` + `approximate_date` (machine-comparable date _and_ the human hedge, "circa 1858"), historical period, description, archive and collection names, canonical / original-document / transcription / local-file URLs, full text, language, translation fields, `source_type` (`primary` | `contemporary` | `scholarly`), `rights_status` (`public_domain` | `licensed` | `permission_required` | `copyright` | `unknown`), copyright jurisdiction, rights notes, `verification_status`, metadata JSONB.
 
 **`source_chunk`** — the retrieval unit. Chunk index, verbatim text, token count, page/chapter/section locators, `date_context`, topic tags[], **`embedding vector(1536)`** with an **HNSW cosine index**, metadata JSONB.
 
@@ -174,18 +182,18 @@ Ten tables. All of it is built to spec now, so later phases populate columns rat
 
 ## API
 
-| Method | Route | Status |
-|---|---|---|
-| GET | `/api/health` | ✅ Live (DB check + active providers) |
-| POST | `/api/auth/register` | ✅ Live |
-| POST | `/api/auth/login` | ✅ Live |
-| GET | `/api/auth/me` | ✅ Live |
-| GET | `/api/people` | ✅ Live — pagination, search, era/category/featured filters |
-| GET | `/api/people/:slug` | ✅ Live |
-| GET | `/api/people/:id/sources` | ✅ Live (empty until Phase 2) |
-| GET | `/api/sources/:id` | ✅ Live |
+| Method   | Route                                                                             | Status                                                                       |
+| -------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| GET      | `/api/health`                                                                     | ✅ Live (DB check + active providers)                                        |
+| POST     | `/api/auth/register`                                                              | ✅ Live                                                                      |
+| POST     | `/api/auth/login`                                                                 | ✅ Live                                                                      |
+| GET      | `/api/auth/me`                                                                    | ✅ Live                                                                      |
+| GET      | `/api/people`                                                                     | ✅ Live — pagination, search, era/category/featured filters                  |
+| GET      | `/api/people/:slug`                                                               | ✅ Live                                                                      |
+| GET      | `/api/people/:id/sources`                                                         | ✅ Live (empty until Phase 2)                                                |
+| GET      | `/api/sources/:id`                                                                | ✅ Live                                                                      |
 | GET/POST | `/api/conversations`, `/api/conversations/:id`, `/api/conversations/:id/messages` | 🔒 501 — auth and rate limits are already enforced; handlers land in Phase 3 |
-| * | `/api/admin/*` | 🔒 501 behind `authenticate` + `requireAdmin` — handlers land in Phase 6 |
+| *        | `/api/admin/*`                                                                    | 🔒 501 behind `authenticate` + `requireAdmin` — handlers land in Phase 6     |
 
 All errors share one envelope:
 
@@ -228,50 +236,89 @@ Design is warm and paper-like rather than product-blue — the subject is archiv
 
 ### Needed in later phases — not now
 
-| Phase | Variable | For |
-|---|---|---|
-| **2** | `EMBEDDING_PROVIDER` + `OPENAI_API_KEY` / `VOYAGE_API_KEY` / `COHERE_API_KEY` | Embedding source chunks |
+| Phase | Variable                                                                                                                                  | For                                   |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| **2** | `EMBEDDING_PROVIDER` + `OPENAI_API_KEY` / `VOYAGE_API_KEY` / `COHERE_API_KEY`                                                             | Embedding source chunks               |
 | **2** | `STORAGE_PROVIDER`, `STORAGE_BUCKET`, `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_PUBLIC_BASE_URL` | Source scans, portraits, audio, video |
-| **3** | `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY`, `LLM_MODEL` | Response generation |
-| **3** | `RERANKING_PROVIDER` + `COHERE_API_KEY` / `VOYAGE_API_KEY` | Post-retrieval relevance ordering |
-| **5** | `STT_PROVIDER` / `TTS_PROVIDER` + `DEEPGRAM_API_KEY` / `ELEVENLABS_API_KEY` | Voice input and output |
+| **3** | `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY`, `LLM_MODEL`                                                                               | Response generation                   |
+| **3** | `RERANKING_PROVIDER` + `COHERE_API_KEY` / `VOYAGE_API_KEY`                                                                                | Post-retrieval relevance ordering     |
+| **5** | `STT_PROVIDER` / `TTS_PROVIDER` + `DEEPGRAM_API_KEY` / `ELEVENLABS_API_KEY`                                                               | Voice input and output                |
 
 Switching a provider off `stub` is a one-line change in `apps/api/src/services/registry.ts` plus one adapter file. No route or handler touches a vendor SDK directly.
 
+### Running the embeddings (once you have a key)
+
+Both adapters are built. Pick one:
+
+```bash
+# Option A — OpenAI. No schema change; the column is already 1536-wide.
+EMBEDDING_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+EMBEDDING_MODEL=text-embedding-3-small
+
+# Option B — Voyage. 1024-wide, so it needs a column migration first.
+EMBEDDING_PROVIDER=voyage
+VOYAGE_API_KEY=pa-...
+EMBEDDING_DIMENSIONS=1024     # then: npm run db:generate && npm run db:migrate
+```
+
+Then:
+
+```bash
+npm run embed -- --dry-run    # scope and token estimate, no API calls
+npm run embed                 # ~3,641 chunks, roughly 900k tokens
+npm run eval                  # now scores retrieval recall@8
+```
+
+The job is resumable and idempotent — only chunks with a NULL vector are sent, so an interrupted run continues and a finished one is a no-op.
+
+**For the A/B:** swap the provider, run `npm run embed -- --force`, and re-run the eval. Nothing is re-fetched or re-chunked, so comparing the two costs only the embedding calls.
+
 ---
 
-## Phase 2 readiness
+## The Lincoln corpus
 
-Everything Phase 2 needs is in place:
+31 documents, all public domain, ingested into 3,641 chunks (~3.5M characters).
 
-- `source` and `source_chunk` tables, migrated, with the vector column and HNSW index live.
-- `SourceIngestionService` and `EmbeddingService` interfaces, with a registry to swap real implementations into.
-- `StorageService` interface for scans and media.
-- `POST /api/admin/sources` and `/api/admin/sources/:id/ingest` routes registered, protected, returning 501.
-- `GET /api/people/:id/sources` and `GET /api/sources/:id` already live and rendering on the person page — sources appear the moment they exist.
-- Counters (`source_count`, `audio_source_count`, `video_source_count`) ready for the ingestion pipeline to maintain.
+| Archive                              | Documents                                                          |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| The Avalon Project (Yale Law School) | 4 — both inaugurals, Gettysburg, Emancipation Proclamation         |
+| Wikisource                           | 20 — speeches, letters, annual messages, proclamations, war orders |
+| Project Gutenberg                    | 7 — the complete Nicolay & Hay _Papers and Writings_ (1905)        |
 
-Phase 2's work is scoped to Lincoln: catalogue his corpus properly — full-text transcriptions, real archive metadata, verified rights status, accurate dating on every document — rather than a thin slice across five figures. Depth here is what the evaluation set measures against.
+**30 are published. One is deliberately withheld:** the 1864 Bixby letter. Its authorship is disputed (most scholars credit John Hay), no manuscript in Lincoln's hand survives, and its premise is factually wrong — two of Mrs Bixby's sons died, not five. It is catalogued as `verificationStatus: 'disputed'` and the publish endpoint refuses it even for an admin. A library that handles provenance correctly must be able to hold a document it will not speak in the figure's voice.
 
-**Three decisions are needed before Phase 2 starts.** See below.
+### Integrity rules, enforced not asserted
+
+- **No text is written by hand.** The manifest carries metadata only; text is downloaded from the recorded URL at ingest time and stored verbatim.
+- **Every URL is proven.** `npm run corpus:verify` fetches each one and checks that extraction yields plausible document text. Nothing publishes without passing.
+- **Cleaning never edits the document.** Period spelling, capitalisation, and punctuation survive byte-for-byte — 248 chunks still carry forms like "to-day" and "Fourscore".
+- **Rights are recorded, not assumed.** Every row says `public_domain` because it is, with jurisdiction and notes where they matter.
+
+### Known limitation
+
+The seven Gutenberg volumes each span a date range and carry the range's _end_ as `dateCreated`. For the knowledge-cutoff filter this is conservative-correct — a volume can never surface material postdating its own end date — but it costs recall on narrow temporal queries. Splitting them into individually-dated documents is the highest-value next improvement, and the reason the famous set-pieces are catalogued separately with exact dates.
 
 ---
 
-## Decisions needed before Phase 2
+## Evaluation set
 
-1. **Embedding provider.** `EMBEDDING_DIMENSIONS` is baked into the pgvector column at migration time; changing it later means an `ALTER TABLE` **and a full re-embed of every chunk**. Currently 1536, which fits OpenAI `text-embedding-3-small` and Voyage `voyage-3-lite`. Cohere `embed-english-v3.0` is 1024; Voyage `voyage-3` is 1024. (Anthropic does not offer an embedding model, so this is a second vendor regardless of the LLM choice.)
+50 cases across nine categories: factual (9), belief (8), temporal (7), knowledge-cutoff (6), false-premise (6), fabricated-quote (4), quotation-verification (4), persona (3), source (3).
 
-   **The single-person v1.0 scope makes this testable rather than a guess.** One corpus is cheap enough to embed more than once, so two providers can be run head-to-head against the evaluation set and chosen on measured retrieval quality. Worth doing before figure #2, since that is the last cheap moment.
+**18 of the 50 assert that the correct answer is a refusal or a corrected premise** — the Gettysburg-envelope myth, a debate that never happened in Chicago, two quotations widely misattributed to Lincoln, questions about events after his death. For these, a confident fluent answer _is_ the failure.
 
-2. **Object storage provider** — S3 or Cloudflare R2. Both work through one S3-compatible adapter; R2 differs only in endpoint and zero egress fees, which matters if source scans and audio get served directly to browsers.
+`npm run eval` runs in two modes. Today it validates the set against the corpus — does every expected source exist, is it published, is it chunked? All 50 pass. Once embeddings exist it scores recall@8 with the date filter applied; that path is already written.
 
-3. **Hosting target** — affects connection pooling and the migration story. A managed Postgres with pgvector (Neon, Supabase, RDS) versus a container platform changes whether the API needs a pooler, and serverless deployment would want a different Postgres driver.
+---
 
-Two further decisions can wait but are worth flagging:
+## Phase 3 readiness
 
-4. **Chunking strategy** — target chunk size and overlap. Affects citation granularity: chunks too large make quotations imprecise; too small lose context.
-5. **Rate-limit store** — the current limiter is in-memory and per-process. More than one API instance needs Redis.
+In place: the corpus, chunked and stored; both embedding adapters; the retrieval interfaces; the evaluation set; the source viewer that citations will resolve to.
 
-## Not in Phase 1, by design
+Needed: an embedding API key. Everything else waits on that.
 
-No RAG, no retrieval, no LLM calls, no embeddings, no ingestion, no persona generation, no deployment. Sources are Phase 2; conversations are Phase 3.
+---
+
+## Not built yet
+
+No retrieval, no LLM calls, no generated embeddings, no persona generation, no deployment. Conversations are Phase 3.
