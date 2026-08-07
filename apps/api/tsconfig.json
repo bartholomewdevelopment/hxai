@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Bundler resolution (extensionless relative imports) rather than NodeNext.
+    // drizzle-kit loads the schema through a CJS require and cannot resolve
+    // `./enums.js` back to `enums.ts`, so the whole app is built as a bundle by
+    // esbuild instead of emitted file-by-file by tsc. tsc is typecheck-only here.
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}
