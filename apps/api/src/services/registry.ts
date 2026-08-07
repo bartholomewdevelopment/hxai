@@ -24,6 +24,7 @@ import {
 } from './stubs';
 import { OpenAIEmbeddingService } from './embedding/openai';
 import { VoyageEmbeddingService } from './embedding/voyage';
+import { PgVectorRetrievalService } from './retrieval/pgvector';
 
 /**
  * The single place providers are chosen.
@@ -83,6 +84,16 @@ function createEmbeddingService(): EmbeddingService {
   }
 }
 
+/**
+ * Retrieval needs an embedding provider to embed the query. With the stub
+ * embedder there is nothing to search with, so retrieval stays stubbed too —
+ * better a clear NOT_IMPLEMENTED than a search that silently returns nothing.
+ */
+function createRetrievalService(): RetrievalService {
+  if (env.EMBEDDING_PROVIDER === 'stub') return new StubRetrievalService();
+  return new PgVectorRetrievalService();
+}
+
 function createStorageService(): StorageService {
   switch (env.STORAGE_PROVIDER) {
     case 's3':
@@ -107,7 +118,7 @@ export function getServices(): ServiceRegistry {
   registry = {
     llm: createLLMService(),
     embedding: createEmbeddingService(),
-    retrieval: new StubRetrievalService(),
+    retrieval: createRetrievalService(),
     reranking: new PassthroughRerankingService(),
     citation: new StubCitationService(),
     ingestion: new StubSourceIngestionService(),
