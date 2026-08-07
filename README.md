@@ -49,7 +49,7 @@ Four guarantees follow from it, and the architecture is built to make them check
 ## Repo layout
 
 ```
-historyai/
+hxai/
 ├── apps/
 │   ├── api/                     Express backend
 │   │   ├── drizzle/             Generated SQL migrations
@@ -82,24 +82,39 @@ historyai/
 
 ## Running it
 
-**Requires:** Node ≥ 20, Docker (for Postgres + pgvector).
+**Requires:** Node ≥ 20, and a PostgreSQL 16+ database with the `pgvector` extension available. Two ways to get one — pick either.
 
 ```bash
-git clone <this repo> && cd historyai
+git clone https://github.com/bartholomewdevelopment/hxai.git && cd hxai
 npm install
-
 cp .env.example .env      # Phase 1 needs no API keys — the defaults work as-is
+```
 
+**Option A — local Postgres via Docker.** One command, nothing installed on your machine. Requires Docker Desktop with working image downloads.
+
+```bash
 npm run db:up             # Postgres 17 + pgvector on localhost:5433
+```
+
+Host port is **5433**, not 5432, to avoid colliding with an existing local install. `npm run db:down` stops it.
+
+**Option B — hosted Postgres.** No local database at all. [Neon](https://neon.tech) and [Supabase](https://supabase.com) both have free tiers with pgvector included. Create a database, copy the connection string, and set it in `.env`:
+
+```
+DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+```
+
+Nothing else changes — the schema, migrations, and queries are identical either way.
+
+**Then, with either option:**
+
+```bash
 npm run db:migrate        # enables the vector extension, then applies migrations
 npm run db:seed           # inserts the 5 test figures
-
 npm run dev               # API on :4000, web on :5173
 ```
 
-Then open **http://localhost:5173**.
-
-Postgres is on host port **5433**, not 5432, to avoid colliding with an existing local install.
+Open **http://localhost:5173**.
 
 ### Scripts
 
