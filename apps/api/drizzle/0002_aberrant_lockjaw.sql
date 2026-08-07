@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "source_person_title_uq" ON "source" USING btree ("historical_person_id","title");

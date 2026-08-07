@@ -1,6 +1,22 @@
-import { boolean, date, index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  date,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { historicalPerson } from './people';
-import { rightsStatusEnum, sourceTypeEnum, verificationStatusEnum } from './enums';
+import {
+  rightsStatusEnum,
+  sourceProcessingStatusEnum,
+  sourceTypeEnum,
+  verificationStatusEnum,
+} from './enums';
 
 /**
  * A document attributed to or about a historical figure.
@@ -62,16 +78,59 @@ export const source = pgTable(
       .notNull()
       .default('unverified'),
 
+    /**
+     * Public visibility, independent of processing state. A source can be
+     * fully ingested and still withheld — for example while its transcription
+     * is being checked against the scan, or while authorship is disputed.
+     * Retrieval only ever considers published sources.
+     */
+    published: boolean('published').notNull().default(false),
+
+    /** Ingestion pipeline position. See SOURCE_PROCESSING_STATUSES. */
+    processingStatus: sourceProcessingStatusEnum('processing_status').notNull().default('pending'),
+    /** Failure detail when processingStatus is 'failed'. */
+    processingError: text('processing_error'),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+    embeddedAt: timestamp('embedded_at', { withTimezone: true }),
+
+    /** Denormalised count of rows in source_chunk, maintained by ingestion. */
+    chunkCount: integer('chunk_count').notNull().default(0),
+
+    /**
+     * SHA-256 of the cleaned full text. Ingestion is idempotent on this: a
+     * re-run whose extraction produces identical text skips re-chunking, so
+     * existing chunk ids (and any embeddings already computed against them)
+     * survive. Re-embedding for a provider A/B therefore never has to
+     * re-download or re-chunk anything.
+     */
+    contentHash: text('content_hash'),
+
+    /**
+     * The exact URL the text was retrieved from, when it differs from the
+     * canonical citation target. Kept so a transcription can always be traced
+     * back to what was actually downloaded.
+     */
+    retrievedFrom: text('retrieved_from'),
+    retrievedAt: timestamp('retrieved_at', { withTimezone: true }),
+
     metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    /**
+     * Natural key for corpus ingestion. A person cannot hold two documents
+     * under the same title, which lets `corpus:ingest` upsert rather than
+     * duplicate on every re-run.
+     */
+    uniqueIndex('source_person_title_uq').on(table.historicalPersonId, table.title),
     index('source_person_idx').on(table.historicalPersonId),
     index('source_type_idx').on(table.sourceType),
     index('source_rights_idx').on(table.rightsStatus),
     index('source_verification_idx').on(table.verificationStatus),
+    index('source_published_idx').on(table.published),
+    index('source_processing_status_idx').on(table.processingStatus),
     /** Supports temporal filtering and knowledge-cutoff enforcement. */
     index('source_person_date_idx').on(table.historicalPersonId, table.dateCreated),
   ],
