@@ -132,10 +132,17 @@ async function main(): Promise<void> {
       // to do about it, since neither is fixable by retrying.
       if (/insufficient_quota|credit_balance_exhausted|billing/i.test(detail)) {
         console.log(
-          '\n  Stopping: the embedding provider reports no remaining credit.\n' +
-            '  The API key authenticated successfully — this is a billing balance, not a bad key.\n' +
-            '  Add credit to the account, then re-run `npm run embed`. Work already done is kept:\n' +
-            '  only chunks with a NULL vector are sent, so the run resumes where it stopped.',
+          '\n  Stopping: the provider reports no spendable credit for this key.\n' +
+            '  The key itself authenticates — this is a balance or limit, not a bad key.\n' +
+            '\n  If credit was just added and this still fails, the usual causes are:\n' +
+            '    1. A per-project spend limit of $0. Project-scoped keys (sk-proj-…) draw on a\n' +
+            '       project budget that is separate from the organisation balance, and a new\n' +
+            '       project often defaults to zero. Check Settings > Project > Limits, not just\n' +
+            '       the org billing page.\n' +
+            '    2. Credit added to a different organisation than the key belongs to.\n' +
+            '    3. Payment still settling — it is usually immediate, but not always.\n' +
+            '\n  Re-run `npm run embed` once resolved. Work already done is kept: only chunks\n' +
+            '  with a NULL vector are sent, so the run resumes where it stopped.',
         );
         break;
       }
