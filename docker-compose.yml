@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: historyai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: historyai
+      POSTGRES_PASSWORD: historyai
+      POSTGRES_DB: historyai
+    ports:
+      - '5433:5432'
+    volumes:
+      - historyai-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U historyai -d historyai']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  historyai-pgdata:
