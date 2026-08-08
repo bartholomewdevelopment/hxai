@@ -9,9 +9,14 @@ import { formatHistoricalDate, initials } from '../lib/format';
  * Chat skeleton.
  *
  * Everything here is inert: the composer and the suggested openings are
- * disabled, and no request is made. Conversations arrive in Phase 3, once
- * retrieval exists — a chat that answered without sources would violate the
- * one guarantee the product makes.
+ * disabled, and no request is made. What is missing is response generation —
+ * the sources are catalogued and searchable, but nothing yet turns retrieved
+ * passages into an answer.
+ *
+ * The empty state reports the *actual* state of the library rather than a
+ * fixed message, so it cannot drift out of date as phases land. It read "has
+ * no catalogued sources yet" for a while after the corpus was ingested, which
+ * is exactly the kind of stale copy that makes a working system look broken.
  */
 export function ChatPage() {
   const { slug = '' } = useParams();
@@ -44,12 +49,21 @@ export function ChatPage() {
 
       <div className="chat__transcript">
         <div className="chat__empty">
-          <h2>Conversations begin in Phase&nbsp;3</h2>
-          <p>
-            The interface is in place, but {person.displayName} has no catalogued sources yet — and
-            this library will not answer a question it cannot cite. Source ingestion is
-            Phase&nbsp;2; retrieval and generation follow.
-          </p>
+          <h2>Not answering questions yet</h2>
+          {person.sourceCount > 0 ? (
+            <p>
+              {person.displayName}&rsquo;s library is catalogued and searchable —{' '}
+              <Link to={`/people/${person.slug}`}>{person.sourceCount} sources</Link>, indexed for
+              retrieval. What is missing is the step that turns retrieved passages into a reply,
+              which arrives in Phase&nbsp;3. Until then this library will not answer a question it
+              cannot cite, so the composer stays disabled rather than guessing.
+            </p>
+          ) : (
+            <p>
+              No sources have been catalogued for {person.displayName} yet, and this library will
+              not answer a question it cannot cite. Ingest their sources first.
+            </p>
+          )}
 
           <div className="suggestions" aria-label="Example questions">
             <button className="suggestion" type="button" disabled>

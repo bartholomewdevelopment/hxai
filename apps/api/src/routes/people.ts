@@ -129,7 +129,13 @@ peopleRouter.get(
 
     if (!person) throw AppError.notFound('No published historical person with that id');
 
-    const where = eq(source.historicalPersonId, id);
+    // Unpublished sources must not appear in the public list. This route
+    // predates the `published` column, so it was listing withheld documents —
+    // the disputed Bixby letter showed up on Lincoln's page and then 404'd
+    // when opened, because GET /sources/:id does filter correctly. Listing a
+    // document we refuse to serve is worse than not listing it: it advertises
+    // material we have deliberately declined to stand behind.
+    const where = and(eq(source.historicalPersonId, id), eq(source.published, true));
 
     const [rows, [totals]] = await Promise.all([
       db
